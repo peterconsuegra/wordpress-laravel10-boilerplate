@@ -177,9 +177,9 @@ APP_KEY=base64:cYkloyBRj/TWCCiSfCtVN4yK9uZzcGElLpfd5u8V/kE=
                 @if(in_array('administrator', $roles, true))
                     <a href="/users"       class="list-group-item list-group-item-action sidebar-link @if($viewsw==='users') active @endif"><i class="bi bi-people"></i> WordPress Users</a>
                     <a href="/orders"      class="list-group-item list-group-item-action sidebar-link @if($viewsw==='orders') active @endif"><i class="bi bi-person-vcard"></i> WooCommerce Orders</a>
-                    <a href="/subscriptions"       class="list-group-item list-group-item-action sidebar-link @if($viewsw==='system') active @endif"><i class="bi bi-gear"></i> WooCommerce Subscriptions</a>
-                    <a href="/posts"    class="list-group-item list-group-item-action sidebar-link @if($viewsw==='pete_plugins') active @endif"><i class="bi bi-plug"></i> WordPress Posts</a>
-                    <a href="/products"      class="list-group-item list-group-item-action sidebar-link @if($viewsw==='wordpress_plugins') active @endif"><i class="bi bi-wordpress"></i> WooCommerce Products</a>
+                    <a href="/subscriptions"       class="list-group-item list-group-item-action sidebar-link @if($viewsw==='subscriptions') active @endif"><i class="bi bi-gear"></i> WooCommerce Subscriptions</a>
+                    <a href="/posts"    class="list-group-item list-group-item-action sidebar-link @if($viewsw==='posts') active @endif"><i class="bi bi-plug"></i> WordPress Posts</a>
+                    <a href="/products"      class="list-group-item list-group-item-action sidebar-link @if($viewsw==='products') active @endif"><i class="bi bi-wordpress"></i> WooCommerce Products</a>
                 @else
                     <a href="/my_subscriptions" class="list-group-item list-group-item-action sidebar-link @if($viewsw==='my_subscriptions') active @endif"><i class="bi bi-card-checklist"></i> My subscriptions</a>
                     <a href="/my_orders" class="list-group-item list-group-item-action sidebar-link @if($viewsw==='my_orders') active @endif"><i class="bi bi-card-checklist"></i> My Orders</a>
@@ -215,24 +215,27 @@ APP_KEY=base64:cYkloyBRj/TWCCiSfCtVN4yK9uZzcGElLpfd5u8V/kE=
 <?php
 
 use Illuminate\Support\Facades\Route;
-
-/*
-|--------------------------------------------------------------------------
-| Web Routes
-|--------------------------------------------------------------------------
-|
-| Here is where you can register web routes for your application. These
-| routes are loaded by the RouteServiceProvider and all of them will
-| be assigned to the "web" middleware group. Make something great!
-|
-*/
-
-Route::get('/', function () {
-    return view('welcome');
-});
-
+use App\Models\PeteSync;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\AdminController;
+
+Route::get('/', function (Request $request) {
+
+    $wp_user = PeteSync::getTheWPUser();
+    $roles  = $wp_user['roles'] ?? []; 
+    $wpSite = env('WP_URL');
+
+    if($wp_user == false){
+        return redirect("$wpSite/my-account");
+    }
+
+    if(in_array('administrator', $roles, true)){
+       return redirect('/users');
+    }else{
+        return redirect('/my_subscriptions');
+    }
+
+});
 
 Route::middleware(['web', 'auth.wp'])->group(function () {
 
@@ -250,60 +253,6 @@ Route::middleware(['web', 'admin.wp'])->group(function () {
     Route::get('subscriptions', [AdminController::class,'subscriptions']);
 
 });
-```
-
-========================================
-
-**resources/views/admin/orders.blade.php**
-```php
-@extends('layout')
-
-@section('content')
-    <div class="container-fluid">
-        <div class="card shadow-sm border-0">
-            <div class="card-header bg-white">
-                <h5 class="mb-0">WordPress Orders <span class="badge text-bg-light">{{ count($orders) }}</span></h5>
-            </div>
-
-            <div class="card-body p-0">
-                @if(count($orders))
-                    <div class="table-responsive">
-                        <table class="table table-striped table-hover align-middle mb-0">
-                            <thead class="table-light">
-                                <tr>
-                                    <th scope="col" class="text-nowrap">ID</th>
-                                    <th scope="col">Name</th>
-                                    <th scope="col">Email</th>
-                                    <th scope="col">Roles</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @forelse($orders as $order)
-                                   <tr>
-                                        <td>{{ $order['id'] }}</td>
-                                        <td>{{ \Carbon\Carbon::parse($order['date_created'])->format('Y-m-d H:i') }}</td>
-                                        <td>{{ ucfirst($order['status']) }}</td>
-                                        <td>{{ number_format($order['total'], 2) }}</td>
-                                        <td>{{ $order['currency'] }}</td>
-
-                                        <td>{{ $order['billing_email'] }}</td>
-
-                                        <td>{{ $order['item_count'] }}</td>
-                                    </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
-                    </div>
-                @else
-                    <div class="alert alert-info m-3">
-                        <i class="bi bi-info-circle me-2"></i>No users found.
-                    </div>
-                @endif
-            </div>
-        </div>
-    </div>
-@endsection
-
 ```
 
 ========================================
@@ -352,39 +301,79 @@ use Illuminate\Http\Request;
 
 class PeteSync{
 
-    public static function fetchFromWp(Request $request, string $resource): array
-{
-    $cookie = $request->header('Cookie', '');
-    $wpUrl  = rtrim(env('WP_URL'), '/');
-    $url    = "{$wpUrl}/wp-json/pete/v1/{$resource}";
+    public static function getTheWPUser(){
+        $request = request(); 
+        $cookieHeader = $request->header('Cookie', '');
+        $wpSite = env('WP_URL');
 
-    try {
+        $endpoint = "{$wpSite}/wp-json/pete/v1/admin-is-logged-in";
+        $loginUrl = "{$wpSite}/wp-login.php?redirect_to=" . urlencode(url()->full());
+
         $response = Http::withHeaders([
-            'Cookie' => $cookie,
-        ])
-        // Optional: retry network hiccups automatically
-        ->retry(2, 200)          // 2 attempts, 200 ms apart
-        ->timeout(5)             // fail fast on slow servers
-        ->get($url)
-        ->throw();               // let 4xx/5xx bubble into catch block
-    } catch (RequestException $e) {
-        // Network error OR non-2xx status code
-        Log::error('PeteSync » WP call failed', [
-            'url'     => $url,
-            'message' => $e->getMessage(),
-            // Laravel keeps the failed response, if any
-            'status'  => optional($e->response)->status(),
-            'body'    => optional($e->response)->body(),
-            'cookies' => str($cookie)->limit(120),
-        ]);
+            'Cookie' => $cookieHeader,
+        ])->get($endpoint);
 
-        // Decide how you want to surface the error upstream
-        // Throwing lets the controller/middleware decide:
-        throw $e;
+        if (! $response->ok()) {
+            return false;
+        }else{
+            $wpUser = $response->json();   
+            return $wpUser;
+        }
     }
 
-    return $response->json();
-}
+    public static function getTheWPUser(Request $request, Closure $next){
+
+        $cookieHeader = $request->header('Cookie', '');
+        $wpSite = env('WP_URL');
+
+        $endpoint = "{$wpSite}/wp-json/pete/v1/admin-is-logged-in";
+        $loginUrl = "{$wpSite}/wp-login.php?redirect_to=" . urlencode(url()->full());
+
+        $response = Http::withHeaders([
+            'Cookie' => $cookieHeader,
+        ])->get($endpoint);
+
+        if (! $response->ok()) {
+            return false;
+        }else{
+            $wpUser = $response->json();   
+            return $wpUser;
+        }
+    }
+
+    public static function fetchFromWp(Request $request, string $resource): array
+    {
+        $cookie = $request->header('Cookie', '');
+        $wpUrl  = rtrim(env('WP_URL'), '/');
+        $url    = "{$wpUrl}/wp-json/pete/v1/{$resource}";
+
+        try {
+            $response = Http::withHeaders([
+                'Cookie' => $cookie,
+            ])
+            // Optional: retry network hiccups automatically
+            ->retry(2, 200)          // 2 attempts, 200 ms apart
+            ->timeout(5)             // fail fast on slow servers
+            ->get($url)
+            ->throw();               // let 4xx/5xx bubble into catch block
+        } catch (RequestException $e) {
+            // Network error OR non-2xx status code
+            Log::error('PeteSync » WP call failed', [
+                'url'     => $url,
+                'message' => $e->getMessage(),
+                // Laravel keeps the failed response, if any
+                'status'  => optional($e->response)->status(),
+                'body'    => optional($e->response)->body(),
+                'cookies' => str($cookie)->limit(120),
+            ]);
+
+            // Decide how you want to surface the error upstream
+            // Throwing lets the controller/middleware decide:
+            throw $e;
+        }
+
+        return $response->json();
+    }
 
 }
 ```
@@ -443,191 +432,122 @@ class AdminWPAuthMiddleware
 
 ========================================
 
-**resources/views/admin/users.blade.php**
+**app/Http/Controllers/DashboardController.php**
 ```php
-{{-- resources/views/admin/users.blade.php --}}
-@extends('layout')
+<?php
 
-@section('header')
-    {{-- Optional: a page-specific header area --}}
-@endsection
+namespace App\Http\Controllers;
 
-@section('content')
-    <div class="container-fluid">
-        <div class="card shadow-sm border-0">
-            <div class="card-header bg-white">
-                <h5 class="mb-0">
-                    WordPress Users
-                    <span class="badge text-bg-light">{{ count($users) }}</span>
-                </h5>
-            </div>
+use App\Standard\Generator;
+use App\Standard\License;
+use Illuminate\Support\Facades\Redirect;
+use Illuminate\Http\Request;
+use Log;
+use App\Http\Requests;
+use App\Http\Controllers\Controller;
+use View;
+use Illuminate\Support\Facades\Http;
+use App\Models\PeteSync;
 
-            <div class="card-body p-0">
-                @if(count($users))
-                    <div class="table-responsive">
-                        <table class="table table-striped table-hover align-middle mb-0">
-                            <thead class="table-light">
-                                <tr>
-                                    <th scope="col" class="text-nowrap">ID</th>
-                                    <th scope="col">Name</th>
-                                    <th scope="col">Email</th>
-                                    <th scope="col">Roles</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach($users as $user)
-                                    <tr>
-                                        <td>{{ $user['id'] }}</td>
-                                        <td>{{ $user['name'] }}</td>
-                                        <td>{{ $user['email'] }}</td>
-                                        <td>{{ implode(', ', $user['roles']) }}</td>
-                                    </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
-                    </div>
-                @else
-                    <div class="alert alert-info m-3">
-                        <i class="bi bi-info-circle me-2"></i>No users found.
-                    </div>
-                @endif
-            </div>
-        </div>
-    </div>
-@endsection
+class DashboardController extends Controller
+{
+    /**
+     * Display a listing of the resource.
+     *
+     * @return \Illuminate\Http\Response
+     */
+
+	public function __construct(Request $request){
+		$wordpress_url  = env('WP_URL');
+		View::share(compact('wordpress_url'));
+	}
+
+	public function my_orders(Request $request){
+        $roles = $request->attributes->get('wp_roles');
+		$wp_user = $request->attributes->get('wp_user');
+		$user_id = $wp_user['user']["id"];
+		$viewsw = "my_orders";
+		$orders = PeteSync::fetchFromWp($request, "user-orders/$user_id");
+		return view('dashboard.my_orders',compact('viewsw','orders','roles'));
+	}
+
+	public function my_subscriptions(Request $request){
+		$roles = $request->attributes->get('wp_roles');
+		$wp_user = $request->attributes->get('wp_user');
+		$user_id = $wp_user['user']["id"];
+		$viewsw = "my_subscriptions";
+		$subscriptions = PeteSync::fetchFromWp($request, "user-subscriptions/$user_id");
+		return view('dashboard.my_subscriptions',compact('viewsw','subscriptions','roles'));
+	}
+
+	public function logout(Request $request){
+
+		Auth::logout();
+	    $url=wp_logout_url(env('WP_URL'));
+		return redirect($url);
+
+		//return Redirect::back();
+	}
+
+
+}
 
 ```
 
 ========================================
 
-**resources/views/admin/posts.blade.php**
+**app/Http/Middleware/WPAuthMiddleware.php**
 ```php
-<html>
+<?php
+namespace App\Http\Middleware;
 
-	<head>
+use Closure;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
+use Log;
 
-		<!-- CSS -->
-		<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.5.3/dist/css/bootstrap.min.css" integrity="sha384-TX8t27EcRE3e/ihU7zmQxVncDAy5uIKz4rEkgIXeMed4M0jlfIDPvg6uqKI2xXr2" crossorigin="anonymous">
+class WPAuthMiddleware
+{
+    public function handle(Request $request, Closure $next)
+    {
+        Log::info("entro en WPAuthMiddleware");
 
-		<!-- jQuery and JS bundle w/ Popper.js -->
-		<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js" integrity="sha384-DfXdz2htPH0lsSSs5nCTpuj/zy4C+OGpamoFVy38MVBnE+IbbVYUew+OrCXaRkfj" crossorigin="anonymous"></script>
-		<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-ho+j7jyWK8fNQe+A12Hb8AhRq26LrZ/JpcUGGOn+Y7RsweNrtN/tE3MoK7ZeZDyx" crossorigin="anonymous"></script>
+        $cookieHeader = $request->header('Cookie', '');
+        $wpSite = env('WP_URL');
+        //$wpSite   = config('services.wp.url');
+        $endpoint = "{$wpSite}/wp-json/pete/v1/customer-is-logged-in";
+        $loginUrl = "{$wpSite}/wp-login.php?redirect_to=" . urlencode(url()->full());
 
-	</head>
+        $response = Http::withHeaders([
+            'Cookie' => $cookieHeader,
+        ])->get($endpoint);
 
-    <body>
-		<div class="container">
+        if (! $response->ok()) {
+            //abort(502, 'Cannot reach WordPress for auth check.');
+            return redirect()->away($loginUrl);
+        }
 
-			 <h3>WordPress posts</h3>     
+        $wpUser = $response->json();  
 
-			<table class="table table-striped">
-			<thead>
-				<tr>
-					<th>ID</th>
-					<th>Título</th>
-					<th>Fecha</th>
-					<th>Extracto</th>
-					<th>Enlace</th>
-				</tr>
-			</thead>
-			<tbody>
-				@forelse($posts as $post)
-					<tr>
-						<td>{{ $post['id'] }}</td>
-						<td>{{ $post['title'] }}</td>
-						<td>{{ date('Y-m-d H:i', strtotime($post['date'])) }}</td>
-						<td>{{ \Illuminate\Support\Str::limit($post['excerpt'], 100) }}</td>
-						<td><a href="{{ $post['link'] }}" target="_blank">Ver</a></td>
-					</tr>
-				@empty
-					<tr>
-						<td colspan="5">No hay posts publicados.</td>
-					</tr>
-				@endforelse
-			</tbody>
-		</table>
+        Log::info("check wpUser");
+        Log::info($wpUser);
 
-		<br />
-		<a href="/wordpress_plus_laravel_examples">List examples</a>
+        // full payload from Pete Sync
+        $roles  = $wpUser['roles'] ?? []; 
 
-	</div>
+         Log::info("check2");
+        if (empty($wpUser['logged_in'])) {
+            Log::info("entro en empty logged_in");
+            return redirect()->away($loginUrl);
+        }
+        Log::info("check3");
+        $request->attributes->set('wp_user', $wpUser);
+        $request->attributes->set('wp_roles', $roles);
 
-    </body>
-</html>
-```
+        Log::info("check4");
+        return $next($request);
+    }
+}
 
-========================================
-
-**resources/views/admin/products.blade.php**
-```php
-<html>
-
-	<head>
-
-		<!-- CSS -->
-		<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.5.3/dist/css/bootstrap.min.css" integrity="sha384-TX8t27EcRE3e/ihU7zmQxVncDAy5uIKz4rEkgIXeMed4M0jlfIDPvg6uqKI2xXr2" crossorigin="anonymous">
-
-		<!-- jQuery and JS bundle w/ Popper.js -->
-		<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js" integrity="sha384-DfXdz2htPH0lsSSs5nCTpuj/zy4C+OGpamoFVy38MVBnE+IbbVYUew+OrCXaRkfj" crossorigin="anonymous"></script>
-		<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-ho+j7jyWK8fNQe+A12Hb8AhRq26LrZ/JpcUGGOn+Y7RsweNrtN/tE3MoK7ZeZDyx" crossorigin="anonymous"></script>
-
-	</head>
-
-    <body>
-
-		<div class="container">
-
-		 <h3>Woocommerce products</h3>     
-
-			<table class="table table-hover">
-        <thead>
-            <tr>
-                <th>ID</th>
-                <th>Nombre</th>
-                <th>SKU</th>
-                <th>Precio</th>
-                <th>Precio Regular</th>
-                <th>Precio Oferta</th>
-                <th>Enlace</th>
-                <th>Imagen</th>
-            </tr>
-        </thead>
-        <tbody>
-            @forelse($products as $prod)
-                <tr>
-                    <td>{{ $prod['id'] }}</td>
-                    <td>{{ $prod['name'] }}</td>
-                    <td>{{ $prod['sku'] }}</td>
-                    <td>{{ $prod['price'] }}</td>
-                    <td>{{ $prod['regular_price'] }}</td>
-                    <td>{{ $prod['sale_price'] ?: '—' }}</td>
-                    <td>
-                        <a href="{{ $prod['permalink'] }}" target="_blank">
-                            Ver producto
-                        </a>
-                    </td>
-                    <td>
-                        @if($prod['image'])
-                            <img src="{{ $prod['image'] }}" alt="{{ $prod['name'] }}" style="max-height:50px;">
-                        @else
-                            —
-                        @endif
-                    </td>
-                </tr>
-            @empty
-                <tr>
-                    <td colspan="8">No se encontraron productos.</td>
-                </tr>
-            @endforelse
-        </tbody>
-    </table>
-
-			<br />
-			<a href="/wordpress_plus_laravel_examples">List examples</a>
-
-		</div>
-
-    </body>
-</html>
 ```
 

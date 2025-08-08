@@ -8,44 +8,53 @@ use Illuminate\Http\Request;
 
 class PeteSync{
 
-    public static function getTheWPUser(){
-        $request = request(); 
-        $cookieHeader = $request->header('Cookie', '');
-        $wpSite = env('WP_URL');
-
-        $endpoint = "{$wpSite}/wp-json/pete/v1/admin-is-logged-in";
-        $loginUrl = "{$wpSite}/wp-login.php?redirect_to=" . urlencode(url()->full());
-
-        $response = Http::withHeaders([
-            'Cookie' => $cookieHeader,
-        ])->get($endpoint);
-
-        if (! $response->ok()) {
-            return false;
-        }else{
-            $wpUser = $response->json();   
-            return $wpUser;
-        }
+    public static function get_roles($wpUser){
+        $wpRoles  = $wpUser['roles'] ?? []; 
+        return $wpRoles;
     }
 
-    public static function getTheWPUser(Request $request, Closure $next){
-        
+    public static function getTheWPUser(?Request $request = null)
+    {
+        $request ??= request();
+
         $cookieHeader = $request->header('Cookie', '');
-        $wpSite = env('WP_URL');
-
+        $wpSite = rtrim(env('WP_URL'), '/');
         $endpoint = "{$wpSite}/wp-json/pete/v1/admin-is-logged-in";
-        $loginUrl = "{$wpSite}/wp-login.php?redirect_to=" . urlencode(url()->full());
 
+        $response = Http::withHeaders(['Cookie' => $cookieHeader])->get($endpoint);
+
+        return $response->ok() ? $response->json() : false;
+    }
+
+    public static function checkTheTypeOfLoggedIn(){
+
+        $request ??= request();
+        $cookieHeader = $request->header('Cookie', '');
         $response = Http::withHeaders([
             'Cookie' => $cookieHeader,
         ])->get($endpoint);
-
-        if (! $response->ok()) {
-            return false;
-        }else{
-            $wpUser = $response->json();   
-            return $wpUser;
+        
+        $wpUser = $response;
+        $roles = PeteSync::get_roles($wpUser);
+        
+        if (empty($wp_user['logged_in']) || !in_array('administrator', $roles, true)){
+            return "loggedInAsAdmin";}
+        else if ((! $wpUser) || empty($wpUser['logged_in'])){ 
+            return "loggedIn";
+        }else {
+            return "notLoggedIn";
         }
+        
+    }
+
+    public static function getTheWPUserFromMiddleware(Request $request, $endpoint){
+
+        $cookieHeader = $request->header('Cookie', '');
+        $response = Http::withHeaders([
+            'Cookie' => $cookieHeader,
+        ])->get($endpoint);
+        return $response;
+
     }
 
     public static function fetchFromWp(Request $request, string $resource): array

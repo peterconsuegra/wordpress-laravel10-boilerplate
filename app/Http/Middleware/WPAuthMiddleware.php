@@ -5,46 +5,26 @@ use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Log;
+use App\Models\PeteSync;
 
 class WPAuthMiddleware
 {
     public function handle(Request $request, Closure $next)
     {
-        Log::info("entro en WPAuthMiddleware");
-
-        $cookieHeader = $request->header('Cookie', '');
+    
         $wpSite = env('WP_URL');
-        //$wpSite   = config('services.wp.url');
         $endpoint = "{$wpSite}/wp-json/pete/v1/customer-is-logged-in";
-        $loginUrl = "{$wpSite}/wp-login.php?redirect_to=" . urlencode(url()->full());
-
-        $response = Http::withHeaders([
-            'Cookie' => $cookieHeader,
-        ])->get($endpoint);
-
-        if (! $response->ok()) {
-            //abort(502, 'Cannot reach WordPress for auth check.');
-            return redirect()->away($loginUrl);
-        }
-
-        $wpUser = $response->json();  
+        $wp_user = PeteSync::getTheWPUserFromMiddleware($request,$endpoint);
         
-        Log::info("check wpUser");
-        Log::info($wpUser);
-
-        // full payload from Pete Sync
-        $roles  = $wpUser['roles'] ?? []; 
-
-         Log::info("check2");
-        if (empty($wpUser['logged_in'])) {
-            Log::info("entro en empty logged_in");
-            return redirect()->away($loginUrl);
+        if ((! $wp_user) || empty($wp_user['logged_in'])) {
+           return redirect(env('WP_URL_LOGIN'));
         }
-        Log::info("check3");
-        $request->attributes->set('wp_user', $wpUser);
+
+        $roles = PeteSync::get_roles($wp_user);
+
+        $request->attributes->set('wp_user', $wp_user);
         $request->attributes->set('wp_roles', $roles);
 
-        Log::info("check4");
         return $next($request);
     }
 }
