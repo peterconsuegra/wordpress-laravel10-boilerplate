@@ -28,6 +28,26 @@ class PeteSync{
         }
     }
 
+    public static function getTheWPUser(Request $request, Closure $next){
+        
+        $cookieHeader = $request->header('Cookie', '');
+        $wpSite = env('WP_URL');
+
+        $endpoint = "{$wpSite}/wp-json/pete/v1/admin-is-logged-in";
+        $loginUrl = "{$wpSite}/wp-login.php?redirect_to=" . urlencode(url()->full());
+
+        $response = Http::withHeaders([
+            'Cookie' => $cookieHeader,
+        ])->get($endpoint);
+
+        if (! $response->ok()) {
+            return false;
+        }else{
+            $wpUser = $response->json();   
+            return $wpUser;
+        }
+    }
+
     public static function fetchFromWp(Request $request, string $resource): array
     {
         $cookie = $request->header('Cookie', '');
