@@ -27,7 +27,9 @@ class PeteSync{
     }
 
     public static function checkTheTypeOfLoggedIn(){
-
+        
+        $wpSite = env('WP_URL');
+        $endpoint = "{$wpSite}/wp-json/pete/v1/return-user-if-logged-in";
         $request ??= request();
         $cookieHeader = $request->header('Cookie', '');
         $response = Http::withHeaders([
@@ -44,11 +46,11 @@ class PeteSync{
         }else {
             return "notLoggedIn";
         }
-        
+
     }
 
     public static function getTheWPUserFromMiddleware(Request $request, $endpoint){
-
+        
         $cookieHeader = $request->header('Cookie', '');
         $response = Http::withHeaders([
             'Cookie' => $cookieHeader,

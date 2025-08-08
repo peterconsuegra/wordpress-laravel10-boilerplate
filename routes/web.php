@@ -7,6 +7,7 @@ use App\Http\Controllers\AdminController;
 
 Route::get('/', function (Request $request) {
 
+    
     /*
     $wp_user = PeteSync::getTheWPUser();
     $roles = PeteSync::get_roles($wp_user);
@@ -21,6 +22,8 @@ Route::get('/', function (Request $request) {
         return redirect('/my_subscriptions');
     }
     */
+
+    
     $type_logged_in = PeteSync::checkTheTypeOfLoggedIn();
     if($type_logged_in === "loggedInAsAdmin"){
        return redirect('/users');
