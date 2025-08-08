@@ -6,28 +6,12 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\AdminController;
 
 Route::get('/', function (Request $request) {
-
     
-    /*
-    $wp_user = PeteSync::getTheWPUser();
-    $roles = PeteSync::get_roles($wp_user);
+    $logged_in_as = PeteSync::checkTheTypeOfLoggedIn();
 
-    if (! $wp_user) {
-        return redirect(env('WP_URL_LOGIN'));
-    }
-
-    if(in_array('administrator', $roles, true)){
+    if($logged_in_as === "loggedInAsAdmin"){
        return redirect('/users');
-    }else{
-        return redirect('/my_subscriptions');
-    }
-    */
-
-    
-    $type_logged_in = PeteSync::checkTheTypeOfLoggedIn();
-    if($type_logged_in === "loggedInAsAdmin"){
-       return redirect('/users');
-    }else if($type_logged_in === "loggedIn"){
+    }else if($logged_in_as === "loggedInAsUser"){
         return redirect('/my_subscriptions');
     }else{
          return redirect(env('WP_URL_LOGIN'));

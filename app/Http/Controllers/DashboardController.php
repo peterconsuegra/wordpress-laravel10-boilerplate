@@ -29,7 +29,7 @@ class DashboardController extends Controller
 	public function my_orders(Request $request){
         $roles = $request->attributes->get('wp_roles');
 		$wp_user = $request->attributes->get('wp_user');
-		$user_id = $wp_user['user']["id"];
+		$user_id = $wp_user['user_id'];
 		$viewsw = "my_orders";
 		$orders = PeteSync::fetchFromWp($request, "user-orders/$user_id");
 		return view('dashboard.my_orders',compact('viewsw','orders','roles'));
@@ -38,7 +38,7 @@ class DashboardController extends Controller
 	public function my_subscriptions(Request $request){
 		$roles = $request->attributes->get('wp_roles');
 		$wp_user = $request->attributes->get('wp_user');
-		$user_id = $wp_user['user']["id"];
+		$user_id = $wp_user['user_id'];
 		$viewsw = "my_subscriptions";
 		$subscriptions = PeteSync::fetchFromWp($request, "user-subscriptions/$user_id");
 		return view('dashboard.my_subscriptions',compact('viewsw','subscriptions','roles'));
