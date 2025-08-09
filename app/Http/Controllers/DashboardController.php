@@ -43,15 +43,5 @@ class DashboardController extends Controller
 		$subscriptions = PeteSync::fetchFromWp($request, "user-subscriptions/$user_id");
 		return view('dashboard.my_subscriptions',compact('viewsw','subscriptions','roles'));
 	}
-	
-	public function logout(Request $request){
-		
-		Auth::logout();
-	    $url=wp_logout_url(env('WP_URL'));
-		return redirect($url);
-
-		//return Redirect::back();
-	}
-
    
 }

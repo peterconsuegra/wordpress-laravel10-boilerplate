@@ -8,6 +8,11 @@
 @section('content')
     <div class="container-fluid">
         <div class="card shadow-sm border-0">
+
+            @if(isset($products["error"]))
+                <h3>{{$products["error"]}}</h3>
+            @else
+
             <div class="card-header bg-white">
                 <h5 class="mb-0">
                     WooCommerce Products
@@ -61,6 +66,8 @@
                     <div class="alert alert-info m-3">
                         <i class="bi bi-info-circle me-2"></i>No products found.
                     </div>
+                @endif
+
                 @endif
             </div>
         </div>
