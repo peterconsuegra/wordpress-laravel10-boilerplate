@@ -17,3 +17,6 @@ yarn-error.log
 /.fleet
 /.idea
 /.vscode
+prompt2.py
+prompt.env
+prompt.txt
