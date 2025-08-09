@@ -31,7 +31,7 @@ It’s the fastest way to:
 | Feature | What You Get |
 |---------|--------------|
 | **1-click cloning & migration** | Copy any WP site locally in seconds and customize without risk |
-| **Seamless Laravel 10 integration** | Launch Laravel alongside WordPress with a single command—share auth, env, and assets instantly |
+| **Seamless Laravel 10 integration** | Launch Laravel alongside WordPress with a single click share auth, env, and assets instantly |
 | **PHP version switcher** | Test plugins and themes against multiple PHP versions effortlessly |
 | **Built-in optimization** | Apache MPM Event, HTTP/2, caching modules & free Let’s Encrypt SSL for blazing performance |
 | **phpMyAdmin & OWASP CRS** | Inspect databases and add an extra security layer without extra installs |
