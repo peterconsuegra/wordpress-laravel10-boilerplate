@@ -14,7 +14,14 @@ class AdminController extends Controller
     public function __construct(Request $request){
 
 		$wordpress_url  = env('WP_URL');
-		View::share(compact('wordpress_url'));
+
+        if (env('WP_INTEGRATION') == "inside_wordpress"){
+            $link_route_fix = "/".env('WP_LARAVEL_NAME');
+        }else{
+            $link_route_fix="";
+        }
+
+		View::share(compact('wordpress_url','link_route_fix'));
 	
 	}
 

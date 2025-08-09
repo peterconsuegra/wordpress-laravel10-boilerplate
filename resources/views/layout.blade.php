@@ -111,14 +111,14 @@
             @endphp
             <nav class="list-group list-group-flush">
                 @if(in_array('administrator', $roles, true))
-                    <a href="/users"       class="list-group-item list-group-item-action sidebar-link @if($viewsw==='users') active @endif"><i class="bi bi-people"></i> WordPress Users</a>
-                    <a href="/orders"      class="list-group-item list-group-item-action sidebar-link @if($viewsw==='orders') active @endif"><i class="bi bi-person-vcard"></i> WooCommerce Orders</a>
-                    <a href="/subscriptions"       class="list-group-item list-group-item-action sidebar-link @if($viewsw==='subscriptions') active @endif"><i class="bi bi-gear"></i> WooCommerce Subscriptions</a>
-                    <a href="/posts"    class="list-group-item list-group-item-action sidebar-link @if($viewsw==='posts') active @endif"><i class="bi bi-plug"></i> WordPress Posts</a>
-                    <a href="/products"      class="list-group-item list-group-item-action sidebar-link @if($viewsw==='products') active @endif"><i class="bi bi-wordpress"></i> WooCommerce Products</a>
+                    <a href="{{$link_route_fix}}/users"       class="list-group-item list-group-item-action sidebar-link @if($viewsw==='users') active @endif"><i class="bi bi-people"></i> WordPress Users</a>
+                    <a href="{{$link_route_fix}}/orders"      class="list-group-item list-group-item-action sidebar-link @if($viewsw==='orders') active @endif"><i class="bi bi-person-vcard"></i> WooCommerce Orders</a>
+                    <a href="{{$link_route_fix}}/subscriptions"       class="list-group-item list-group-item-action sidebar-link @if($viewsw==='subscriptions') active @endif"><i class="bi bi-gear"></i> WooCommerce Subscriptions</a>
+                    <a href="{{$link_route_fix}}/posts"    class="list-group-item list-group-item-action sidebar-link @if($viewsw==='posts') active @endif"><i class="bi bi-plug"></i> WordPress Posts</a>
+                    <a href="{{$link_route_fix}}/products"      class="list-group-item list-group-item-action sidebar-link @if($viewsw==='products') active @endif"><i class="bi bi-wordpress"></i> WooCommerce Products</a>
                 @else
-                    <a href="/my_subscriptions" class="list-group-item list-group-item-action sidebar-link @if($viewsw==='my_subscriptions') active @endif"><i class="bi bi-card-checklist"></i> My subscriptions</a>
-                    <a href="/my_orders" class="list-group-item list-group-item-action sidebar-link @if($viewsw==='my_orders') active @endif"><i class="bi bi-card-checklist"></i> My Orders</a>
+                    <a href="{{$link_route_fix}}/my_subscriptions" class="list-group-item list-group-item-action sidebar-link @if($viewsw==='my_subscriptions') active @endif"><i class="bi bi-card-checklist"></i> My subscriptions</a>
+                    <a href="{{$link_route_fix}}/my_orders" class="list-group-item list-group-item-action sidebar-link @if($viewsw==='my_orders') active @endif"><i class="bi bi-card-checklist"></i> My Orders</a>
                 @endif
             </nav>
         </div>
